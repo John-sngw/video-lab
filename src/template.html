@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Zen Maru Gothic"; font-weight: 500; src: url("../assets/fonts/ZenMaruGothic-Medium.ttf"); }
+  @font-face { font-family: "Zen Maru Gothic"; font-weight: 700; src: url("../assets/fonts/ZenMaruGothic-Bold.ttf"); }
+
+  :root {
+    --bg: #EAF3DE;
+    --ink: #27500A;     /* 文字（濃） */
+    --accent: #3B6D11;  /* 強調 */
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    background: var(--bg); color: var(--ink);
+    font-family: "Zen Maru Gothic", sans-serif; font-weight: 700;
+  }
+  em { font-style: normal; color: var(--accent); }
+
+  /* 場面ごとのレイヤー。表示・非表示と透明度は renderAt() で制御する */
+  .scene { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
+
+  /* 図のエリア（画面上部〜中央） */
+  .figure { position: absolute; left: 0; right: 0; top: 0; height: 1360px; }
+  .card {
+    position: absolute; left: 80px; right: 80px;
+    background: var(--card); border-radius: 56px;
+    box-shadow: 0 12px 32px rgba(39, 80, 10, 0.08);
+  }
+  .note {
+    position: absolute; left: 80px; right: 80px; top: 1290px;
+    text-align: center; font-size: 34px; font-weight: 500; opacity: 0.85;
+  }
+
+  /* 字幕（画面下部・最大2行）。改行は手で入れず、文節で自動的に折り返す */
+  .subtitle, #measure {
+    position: absolute; left: 70px; right: 70px;
+    font-size: 66px; line-height: 1.45; text-align: center;
+    word-break: auto-phrase; text-wrap: balance; line-break: strict;
+  }
+  .subtitle { top: 1400px; opacity: 0; }
+  #measure { top: 0; visibility: hidden; }
+  #measure-line { position: absolute; top: 0; visibility: hidden; white-space: nowrap; font-size: 66px; }
+
+  /* 情報の時点（常に表示） */
+  #asof {
+    position: absolute; right: 48px; bottom: 56px;
+    padding: 12px 28px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.7);
+    font-size: 32px; font-weight: 500;
+  }
+
+  .placeholder {
+    display: flex; align-items: center; justify-content: center;
+    border: 6px dashed var(--accent); background: transparent; box-shadow: none;
+    font-size: 48px;
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="measure"></div>
+<span id="measure-line"></span>
+<div id="asof"></div>
+
+<script src="figures.js"></script>
+<script>
+  const LINE_HEIGHT = 66 * 1.45;
+  let scenes = [];
+  let transition = 0.4;
+
+  const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // **…** で囲んだ部分を強調色にする
+  const markup = (s) => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<em>$1</em>");
+
+  // 2行に収まるとき、読みやすい位置で折り返す。
+  // 候補は「、。）／」の後ろと「 →」の前と、漢字・カタカナ・数字に続く助詞（を は が に で も）の後ろ。
+  // 句読点を優先し、次に2行の長さが近いものを選ぶ。候補がなければ CSS の自動折り返しに任せる
+  const SUBTITLE_WIDTH = 1080 - 70 * 2;
+  const breakCandidates = (text) => {
+    const plain = text.replace(/\*\*/g, "");
+    const result = [];
+    for (let i = 1; i < plain.length - 1; i++) {
+      const c = plain[i - 1], prev = plain[i - 2] || "";
+      if ("、。）／".includes(c) || plain.startsWith(" →", i)) result.push({ at: i, punct: true });
+      else if ("をはがにでも".includes(c) && /[一-龠ァ-ヶー0-9０-９）]/.test(prev) && plain[i] !== "、") result.push({ at: i, punct: false });
+    }
+    return result;
+  };
+  const textWidth = (s) => {
+    const el = document.getElementById("measure-line");
+    el.textContent = s.trim();
+    return el.getBoundingClientRect().width;
+  };
+  // 強調記号を残したまま、記号を除いた文字数で at 番目の位置に改行を入れる
+  const insertBreak = (text, at) => {
+    let n = 0;
+    for (let i = 0; i < text.length; i++) {
+      if (text.startsWith("**", i)) { i++; continue; }
+      if (n === at) return [text.slice(0, i), text.slice(i)];
+      n++;
+    }
+    return [text, ""];
+  };
+  const layoutSubtitle = (text) => {
+    const plain = text.replace(/\*\*/g, "");
+    if (textWidth(plain) <= SUBTITLE_WIDTH) return markup(text);
+    let best = null;
+    for (const c of breakCandidates(text)) {
+      const w1 = textWidth(plain.slice(0, c.at)), w2 = textWidth(plain.slice(c.at));
+      if (w1 > SUBTITLE_WIDTH || w2 > SUBTITLE_WIDTH) continue;
+      const score = (c.punct ? 0 : 10000) + Math.abs(w1 - w2);
+      if (!best || score < best.score) best = { ...c, score };
+    }
+    if (!best) return markup(text);
+    // 強調が改行をまたぐ場合も壊れないよう、前後それぞれで ** の数を合わせる
+    let [a, b] = insertBreak(text, best.at);
+    if ((a.match(/\*\*/g) || []).length % 2 === 1) { a += "**"; b = "**" + b; }
+    const clean = (x) => markup(x.replace(/\*\*\*\*/g, "").trim());
+    return clean(a) + "<br>" + clean(b);
+  };
+
+  // scenes.json を受け取って画面を組み立て、字幕の行数などの確認結果を返す
+  window.init = (data) => {
+    transition = data.meta.transition?.duration ?? 0.4;
+    document.getElementById("asof").textContent = data.meta.asOf;
+    const stage = document.getElementById("stage");
+    const measure = document.getElementById("measure");
+    const report = [];
+    let start = 0;
+
+    scenes = data.scenes.map((s) => {
+      const el = document.createElement("div");
+      el.className = "scene";
+      const figureEl = document.createElement("div");
+      figureEl.className = "figure";
+      el.appendChild(figureEl);
+
+      const builder = FIGURES[s.figure.type];
+      const figure = builder ? builder(s.figure.params || {}, figureEl) : FIGURES.placeholder({ type: s.figure.type }, figureEl);
+      if (!builder) report.push({ scene: s.id, warning: `図の種類「${s.figure.type}」は未実装` });
+
+      if (s.note) {
+        const note = document.createElement("div");
+        note.className = "note";
+        note.textContent = s.note;
+        el.appendChild(note);
+      }
+
+      const subtitles = s.subtitles.map((sub, i) => {
+        const subEl = document.createElement("div");
+        subEl.className = "subtitle";
+        subEl.innerHTML = layoutSubtitle(sub.text);
+        el.appendChild(subEl);
+        measure.innerHTML = subEl.innerHTML;
+        const lines = Math.round(measure.getBoundingClientRect().height / LINE_HEIGHT);
+        report.push({ scene: s.id, subtitle: i + 1, lines, text: sub.text });
+        return { ...sub, el: subEl };
+      });
+
+      stage.appendChild(el);
+      const scene = { ...s, start, el, figure, subtitles };
+      start += s.duration;
+      return scene;
+    });
+    return { totalDuration: start, report };
+  };
+
+  const clamp = (x) => Math.min(1, Math.max(0, x));
+
+  // 時刻 t（秒）の画面を描く。アニメーションはすべて t から計算する（コマ落ちを防ぐため）
+  window.renderAt = (t) => {
+    const d = transition;
+    scenes.forEach((s, i) => {
+      const local = t - s.start;
+      const fadeIn = i === 0 ? 1 : clamp((local + d / 2) / d);
+      const fadeOut = i === scenes.length - 1 ? 1 : clamp((s.duration - local + d / 2) / d);
+      const opacity = Math.min(fadeIn, fadeOut);
+      s.el.style.opacity = opacity;
+      s.el.style.visibility = opacity > 0 ? "visible" : "hidden";
+      if (opacity <= 0) return;
+
+      s.figure.update(local);
+      s.subtitles.forEach((sub) => {
+        const inP = clamp((local - sub.start) / 0.3);
+        const outP = clamp((sub.end - local) / 0.25);
+        // 場面の最初と最後の字幕は、場面の切り替えに任せる
+        const a = Math.min(sub.start === 0 ? 1 : inP, sub.end >= s.duration ? 1 : outP);
+        sub.el.style.opacity = a;
+        sub.el.style.transform = `translateY(${(1 - ease(sub.start === 0 ? 1 : inP)) * 16}px)`;
+      });
+    });
+  };
+</script>
+</body>
+</html>
