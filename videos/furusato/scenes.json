@@ -6,14 +6,22 @@
     "fps": 30,
     "output": "out/furusato.mp4",
     "asOf": "2026年10月時点の情報",
-    "transition": { "type": "fade", "duration": 0.4 }
+    "transition": {
+      "type": "fade",
+      "duration": 0.4
+    }
   },
   "scenes": [
     {
       "id": 1,
       "name": "title",
       "duration": 5,
-      "figure": { "type": "title", "params": { "text": "ふるさと納税って何？" } },
+      "figure": {
+        "type": "title",
+        "params": {
+          "text": "ふるさと納税って何？"
+        }
+      },
       "subtitles": [],
       "note": null
     },
@@ -21,9 +29,22 @@
       "id": 2,
       "name": "mechanism",
       "duration": 9,
-      "figure": { "type": "flow", "params": {} },
+      "figure": {
+        "type": "flow",
+        "params": {
+          "from": "あなた",
+          "to": "応援したい自治体",
+          "give": "寄付",
+          "receive": "返礼品",
+          "receiveAt": 3
+        }
+      },
       "subtitles": [
-        { "start": 0, "end": 9, "text": "応援したい**自治体に寄付**すると、**返礼品**がもらえる" }
+        {
+          "start": 0,
+          "end": 9,
+          "text": "応援したい**自治体に寄付**すると、**返礼品**がもらえる"
+        }
       ],
       "note": null
     },
@@ -31,9 +52,24 @@
       "id": 3,
       "name": "reason",
       "duration": 9,
-      "figure": { "type": "splitBar", "params": { "total": 30000, "self": 2000 } },
+      "figure": {
+        "type": "splitBar",
+        "params": {
+          "label": "寄付額",
+          "self": "2,000円",
+          "selfNote": "自己負担",
+          "rest": "2,000円を超えた分",
+          "restNote": "所得税・住民税から控除",
+          "splitAt": 1.5,
+          "restAt": 3
+        }
+      },
       "subtitles": [
-        { "start": 0, "end": 9, "text": "寄付額のうち**2,000円**を超えた分が、税金から引かれる" }
+        {
+          "start": 0,
+          "end": 9,
+          "text": "寄付額のうち**2,000円**を超えた分が、税金から引かれる"
+        }
       ],
       "note": null
     },
@@ -41,9 +77,35 @@
       "id": 4,
       "name": "example",
       "duration": 10,
-      "figure": { "type": "calc", "params": { "donation": 30000, "deduction": 28000, "self": 2000 } },
+      "figure": {
+        "type": "calc",
+        "params": {
+          "rows": [
+            {
+              "label": "寄付",
+              "value": "30,000円",
+              "at": 0.3
+            },
+            {
+              "label": "控除",
+              "value": "−28,000円",
+              "at": 2.5
+            },
+            {
+              "label": "実質の負担",
+              "value": "2,000円",
+              "at": 5,
+              "emphasis": true
+            }
+          ]
+        }
+      },
       "subtitles": [
-        { "start": 0, "end": 10, "text": "3万円を寄付 → 2万8千円が控除 → 実質の負担は**2,000円**" }
+        {
+          "start": 0,
+          "end": 10,
+          "text": "3万円を寄付 → 2万8千円が控除 → 実質の負担は**2,000円**"
+        }
       ],
       "note": "※控除の上限内で寄付した場合の例"
     },
@@ -51,10 +113,45 @@
       "id": 5,
       "name": "caution",
       "duration": 10,
-      "figure": { "type": "checklist", "params": {} },
+      "figure": {
+        "type": "checklist",
+        "params": {
+          "sections": [
+            {
+              "at": 0,
+              "title": "控除には上限がある",
+              "kind": "limit",
+              "limitLabel": "上限"
+            },
+            {
+              "at": 4,
+              "title": "手続きが必要（どちらか）",
+              "kind": "options",
+              "options": [
+                {
+                  "name": "ワンストップ特例",
+                  "detail": "寄付先は5自治体まで"
+                },
+                {
+                  "name": "確定申告",
+                  "detail": ""
+                }
+              ]
+            }
+          ]
+        }
+      },
       "subtitles": [
-        { "start": 0, "end": 4, "text": "控除には**上限**がある" },
-        { "start": 4, "end": 10, "text": "**手続き**も必要（ワンストップ特例は5自治体まで／確定申告）" }
+        {
+          "start": 0,
+          "end": 4,
+          "text": "控除には**上限**がある"
+        },
+        {
+          "start": 4,
+          "end": 10,
+          "text": "控除を受けるには**手続き**が必要"
+        }
       ],
       "note": null
     },
@@ -62,10 +159,40 @@
       "id": 6,
       "name": "changes",
       "duration": 10,
-      "figure": { "type": "timeline", "params": {} },
+      "figure": {
+        "type": "timeline",
+        "params": {
+          "events": [
+            {
+              "at": 0,
+              "date": "2025年10月",
+              "title": "ポイント還元が終了",
+              "detail": "ポータルサイトのポイント付与を禁止"
+            },
+            {
+              "at": 5,
+              "date": "2026年10月",
+              "title": "返礼品の基準がさらに厳しく",
+              "detail": "募集経費の上限引き下げ・地場産品の基準を厳格化"
+            }
+          ],
+          "footer": {
+            "at": 7.5,
+            "text": "「実質2,000円」の仕組みは変わらない"
+          }
+        }
+      },
       "subtitles": [
-        { "start": 0, "end": 5, "text": "ポイント還元は**2025年10月に終了**" },
-        { "start": 5, "end": 10, "text": "**2026年10月**から返礼品の基準がさらに厳しく" }
+        {
+          "start": 0,
+          "end": 5,
+          "text": "ポイント還元は**2025年10月に終了**"
+        },
+        {
+          "start": 5,
+          "end": 10,
+          "text": "**2026年10月**から返礼品の基準がさらに厳しく"
+        }
       ],
       "note": null
     },
@@ -73,9 +200,27 @@
       "id": 7,
       "name": "summary",
       "duration": 7,
-      "figure": { "type": "summary", "params": {} },
+      "figure": {
+        "type": "summary",
+        "params": {
+          "items": [
+            {
+              "text": "上限額を確認",
+              "at": 0.3
+            },
+            {
+              "text": "無理のない範囲で",
+              "at": 1.5
+            }
+          ]
+        }
+      },
       "subtitles": [
-        { "start": 0, "end": 7, "text": "**上限額を確認**して、無理のない範囲で" }
+        {
+          "start": 0,
+          "end": 7,
+          "text": "**上限額を確認**して、無理のない範囲で"
+        }
       ],
       "note": null
     }
